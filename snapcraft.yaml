@@ -102,20 +102,6 @@ parts:
       echo "Building certs"
       build-scripts/build-certs.sh
 
-      echo "Preparing nvidia runtime"
-      #curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-      #sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-      ## Install nvidia-docker2 and reload the Docker daemon configuration
-      #curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-      #distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-      #curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-      #sudo apt-get update
-      #sudo apt-get install -y "docker-ce=17.12.1~ce-0~ubuntu"
-      #sudo apt-get install -y "nvidia-container-runtime=2.0.0+docker17.12.1-1"
-      #sudo apt-get install -y "nvidia-docker2=2.0.3+docker17.12.1-1"
-
-
       echo "Preparing cni"
       mkdir -p opt/cni/bin/
       cp $KUBE_SNAP_BINS/cni/* opt/cni/bin/
@@ -157,6 +143,10 @@ parts:
 
       snapcraftctl build
 
+  # We are forced to use an upstream dockerd because the combination docker.io (1.13) + nvidia
+  # runtime results in "Error response from daemon: oci runtime error: flag provided but not defined: -console"
+  # probably related to https://github.com/moby/moby/issues/30198
+  # TODO(kjackal): re-ters docker.io when it gets updated
   docker:
     plugin: dump
     build-attributes: [no-patchelf]
@@ -187,58 +177,4 @@ parts:
     plugin: dump
     build-attributes: [no-patchelf]
     source: https://nvidia.github.io/nvidia-container-runtime/ubuntu16.04/amd64/nvidia-container-runtime_2.0.0+docker17.12.1-1_amd64.deb
-    source-type: deb
-
-  cuda-drivers:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-drivers_390.30-1_amd64.deb
-    source-type: deb
-
-  nvidia-390:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/nvidia-390_390.30-0ubuntu1_amd64.deb
-    source-type: deb
-
-  nvidia-390-dev:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/nvidia-390-dev_390.30-0ubuntu1_amd64.deb
-    source-type: deb
-
-  libcuda1-390:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/libcuda1-390_390.30-0ubuntu1_amd64.deb
-    source-type: deb
-
-  nvidia-modprobe:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/nvidia-modprobe_390.30-0ubuntu1_amd64.deb
-    source-type: deb
-
-  nvidia-settings:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/nvidia-settings_390.30-0ubuntu1_amd64.deb
-    source-type: deb
-
-  nvidia-opencl-icd-390:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/nvidia-libopencl1-390_390.30-0ubuntu1_amd64.deb
-    source-type: deb
-
-  libopencl1:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/nvidia-opencl-icd-390_390.30-0ubuntu1_amd64.deb
-    source-type: deb
-
-  cuda-nvml:
-    plugin: dump
-    build-attributes: [no-patchelf]
-    source: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-nvml-dev-9-1_9.1.85-1_amd64.deb
     source-type: deb
