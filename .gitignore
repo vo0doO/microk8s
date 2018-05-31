@@ -1,6 +1,7 @@
 /build/
 /parts/
 /prime/
-/snap/
 /stage/
+/snap/*
+!/snap/hooks/
 *.snap

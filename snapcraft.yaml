@@ -16,7 +16,7 @@ apps:
     command: run-with-config-args etcd
     daemon: simple
   daemon-docker:
-    command: run-with-config-args dockerd
+    command: run-docker-with-args
     daemon: simple
   daemon-apiserver:
     command: run-with-config-args kube-apiserver
@@ -39,19 +39,54 @@ apps:
     command: microk8s-enable.wrapper
   disable:
     command: microk8s-disable.wrapper
+  config:
+    command: microk8s-config.wrapper
 
 parts:
+  libnftnl:
+    plugin: autotools
+    source: https://www.netfilter.org/projects/libnftnl/files/libnftnl-1.0.9.tar.bz2
+    build-packages:
+    - libjansson-dev
+    - libmnl-dev
+  iptables:
+    after:
+    - libnftnl
+    source: https://www.netfilter.org/projects/iptables/files/iptables-1.6.1.tar.bz2
+    plugin: autotools
+    build-packages:
+    - bison
+    - flex
+    - libmnl-dev
+    - libnfnetlink-dev
+    - libnetfilter-conntrack3
+    - libnetfilter-conntrack-dev
+    configflags:
+    - "--disable-shared"
+    - "--enable-static"
+    prime: [ -bin/iptables-xml ]
+  docker:
+    after: [iptables]
+    plugin: dump
+    stage-packages:
+    - conntrack
+    - docker.io
+    - aufs-tools
+    - gawk
+    source: .
+    stage:
+    - -sbin/xtables-multi
+    - -sbin/iptables*
+    - -lib/xtables
+    override-build: "true"
   microk8s:
+    after: [docker]
     plugin: dump
     build-attributes: [no-patchelf]
     build-packages:
     - curl
     - openssl
     - file
-    stage-packages:
-    - conntrack
-    - docker.io
-    - aufs-tools
     source: .
     override-build: |
       set -eu
@@ -63,19 +98,19 @@ parts:
         . build-scripts/fetch-binaries.sh
       fi
 
-      echo "Creating hooks"
-      build-scripts/create-install-hook.sh
-      build-scripts/create-remove-hook.sh
-
       echo "Setting default daemon configs"
       cp -r $KUBE_SNAP_ROOT/microk8s-resources/default-args .
 
       echo "Building certs"
       build-scripts/build-certs.sh
+      cp -r $KUBE_SNAP_ROOT/microk8s-resources/certs-beta .
 
       echo "Preparing cni"
       mkdir -p opt/cni/bin/
       cp $KUBE_SNAP_BINS/cni/* opt/cni/bin/
+
+      echo "Preparing dockerd"
+      cp $KUBE_SNAP_ROOT/microk8s-resources/docker-profile .
 
       echo "Preparing etcd"
       cp $KUBE_SNAP_BINS/etcd/etcd .
@@ -110,6 +145,6 @@ parts:
       echo "Creating commands and wrappers"
       cp $KUBE_SNAP_ROOT/microk8s-resources/wrappers/* .
       #TODO(kjackal): yaml manifests may need to be rendered to match the $SNAP_ARCH
-      cp -r $KUBE_SNAP_ROOT/microk8s-resources/yaml .
+      cp -r $KUBE_SNAP_ROOT/microk8s-resources/actions .
 
       snapcraftctl build
